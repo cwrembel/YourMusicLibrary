@@ -1,0 +1,31 @@
+{
+  "library": "/Users/christianwrembel/Desktop/App Musik sammeln/Musik Library",
+  "alt_library": "/Volumes/TAURON DJ",
+  "use_alt": false,
+  "sources": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "recent_sources": [],
+  "recent_targets": [
+    "/Users/christianwrembel/Desktop/App Musik sammeln/Musik Library",
+    "/Volumes/TAURON DJ",
+    "/Volumes/Taui SSD/Mugge All/beatport/techno",
+    "/Users/christianwrembel/Desktop/till",
+    "/Users/christianwrembel/Desktop/App Musik sammeln/untitled folder",
+    "/Users/christianwrembel/Desktop/App Musik sammeln"
+  ],
+  "delete_warn_suppressed": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "delete_warn_suppressed_global": false
+}
