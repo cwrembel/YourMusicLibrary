@@ -346,6 +346,15 @@ class App(tk.Tk):
         path = self.library_combo.get().strip()
         if not path:
             return
+        # --- Windows handling ---    
+        if sys.platform.startswith("win"):
+            try:
+                os.startfile(os.path.abspath(path))
+            except Exception as e:
+                print("Could not open folder:", e)
+            return
+    
+        # macOS Finder handling
         os.makedirs(path, exist_ok=True)
         try:
             p = os.path.abspath(path)
