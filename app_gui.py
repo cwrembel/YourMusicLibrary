@@ -222,7 +222,8 @@ class App(tk.Tk):
             row = i // 3
             cell = ttk.Frame(src_grid, padding=6)
             cell.grid(row=row, column=col, sticky="we", padx=4, pady=4)
-            ttk.Label(cell, text=f"Source {i+1}").grid(row=0, column=0, sticky="w")
+            lbl = ttk.Label(cell, text=f"Source {i+1}")
+            lbl.grid(row=0, column=0, sticky="w")
             
             # colored wrapper for the source combobox (lets us switch green/red)
             wrap = tk.Frame(cell, bg="#DFF5D8")  # default green on startup
@@ -240,6 +241,9 @@ class App(tk.Tk):
             self.source_wraps.append(wrap)
             self._bind_combo_open_dialog(combo, lambda idx=i: self._browse_source(idx))
             self.source_combos.append(combo)
+            if not hasattr(self, "source_labels"):
+                self.source_labels = []
+            self.source_labels.append(lbl)
 
             # Delete-after checkbox
             ttk.Checkbutton(cell, text="Delete files from source after transfer",
@@ -255,6 +259,7 @@ class App(tk.Tk):
         for v in self.source_vars:
             if not v.get().strip():
                 v.set(PLACEHOLDER_SRC)
+        self._update_all_source_labels()
 
 
         # Alternative target
@@ -525,6 +530,66 @@ class App(tk.Tk):
         except Exception:
             pass
 
+    def _win_drive_display(self, path: str) -> str:
+        """Return a friendly Windows drive display like 'Schwenker (D:)' for a path."""
+        try:
+            if not sys.platform.startswith("win"):
+                return ""
+            if not path:
+                return ""
+            drive, _ = os.path.splitdrive(os.path.abspath(path))
+            if not drive:
+                return ""
+            root = drive + "\\"
+
+            import ctypes
+            from ctypes import wintypes
+
+            vol_name_buf = ctypes.create_unicode_buffer(261)
+            fs_name_buf = ctypes.create_unicode_buffer(261)
+            serial = wintypes.DWORD()
+            max_comp_len = wintypes.DWORD()
+            flags = wintypes.DWORD()
+
+            ok = ctypes.windll.kernel32.GetVolumeInformationW(
+                ctypes.c_wchar_p(root),
+                vol_name_buf,
+                ctypes.sizeof(vol_name_buf),
+                ctypes.byref(serial),
+                ctypes.byref(max_comp_len),
+                ctypes.byref(flags),
+                fs_name_buf,
+                ctypes.sizeof(fs_name_buf),
+            )
+            label = vol_name_buf.value.strip() if ok else ""
+            if label:
+                return f"{label} ({drive})"
+            return drive
+        except Exception:
+            return ""
+
+    def _update_source_label(self, idx: int):
+        """Update the 'Source X' label to include Windows drive name, if available."""
+        try:
+            if not hasattr(self, "source_labels"):
+                return
+            if idx < 0 or idx >= len(self.source_labels):
+                return
+            base = f"Source {idx+1}"
+            p = self._normalized_src(self.source_vars[idx].get())
+            disp = self._win_drive_display(p)
+            txt = f"{base} — {disp}" if disp else base
+            self.source_labels[idx].configure(text=txt)
+        except Exception:
+            pass
+
+    def _update_all_source_labels(self):
+        try:
+            for i in range(6):
+                self._update_source_label(i)
+        except Exception:
+            pass
+
     def _normalized_src(self, val: str) -> str:
         val = (val or "").strip()
         return "" if (not val or val == PLACEHOLDER_SRC or val == CLEAR_LABEL) else val
@@ -561,11 +626,13 @@ class App(tk.Tk):
                 self.after_idle(lambda: cb.master.focus_set())
             except Exception:
                 pass
+            self._update_source_label(idx)
             return
         # prevent duplicates across slots
         if path in self._current_sources(exclude_idx=idx):
             messagebox.showwarning("Duplicate", "This folder is already selected in another source.")
             self.source_vars[idx].set(PLACEHOLDER_SRC)
+            self._update_source_label(idx)
             return
         # accept
         self.source_vars[idx].set(path)
@@ -573,6 +640,7 @@ class App(tk.Tk):
         # Immediately refresh all source dropdowns to include recent sources in this session
         for cb in self.source_combos:
             cb["values"] = [CLEAR_LABEL] + self.cfg.get("recent_sources", [])
+        self._update_source_label(idx)
 
     def _on_source_selected(self, idx: int):
         val = self.source_combos[idx].get().strip()
@@ -580,6 +648,7 @@ class App(tk.Tk):
             self._set_source_path(idx, "")
         else:
             self._set_source_path(idx, val)
+        self._update_source_label(idx)
 
     # (Removed: _schedule_redraw and redraw_arrows methods)
 
