@@ -853,16 +853,6 @@ class App(tk.Tk):
         except Exception:
             pass
 
-        # Pre-count in a background thread; when known, switch both bars to determinate
-        def _precount():
-            try:
-                t = sum(self._count_audio_files(s) for s in sources)
-            except Exception:
-                t = 0
-            if t > 0:
-                self.after(0, lambda: self.inline_set_total(t))
-
-        threading.Thread(target=_precount, daemon=True).start()
 
         # Kommando aufbauen – wir rufen das Skript einmal pro Source auf,
         # damit "delete-after" wirklich nur für diese Source gilt.
