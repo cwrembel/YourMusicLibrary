@@ -11,7 +11,7 @@ from hashing import hash_robust as berechne_audio_hash
 
 INDEX_NAME = ".musik_index.db"  # einfache JSON-Datei mit Hashes (Set)
 MAP_NAME = ".hash_map.json"  # Pfad->Hash Zuordnung für Watchdog
-CACHE_NAME = ".hash_cache.json"  # pro-Source Cache (Pfad -> {hash,size,mtime})
+CACHE_NAME = ".hash_cache.json"  # pro-Source Cache (RELATIVER Pfad -> {hash,size,mtime})
 
 AUDIO_EXTS = {
     ".mp3",".flac",".alac",".m4a",".aac",".ogg",".opus",
@@ -140,8 +140,18 @@ def main():
     scache_path = source_cache_path(src)
     scache = load_source_cache(scache_path)
 
-    # Aktuelle Datei-Liste (absolute Pfade) für spätere Cache-Bereinigung
-    current_files_abs = set()
+    # Cache-Key: relativer Pfad innerhalb der Quelle (macht Cache robust gegen wechselnde Mountpoints,
+    # z.B. wenn ein USB-Stick aus- und wieder eingesteckt wird).
+    def _cache_key(fp_abs: str) -> str:
+        try:
+            rel = os.path.relpath(fp_abs, src)
+        except Exception:
+            rel = fp_abs
+        # Normalisieren, damit Windows/Unix-Trenner konsistent sind
+        return rel.replace("\\", "/")
+
+    # Aktuelle Datei-Liste (relative Cache-Keys) für spätere Cache-Bereinigung
+    current_keys = set()
 
     # Dateien sammeln
     files = finde_musikdateien(src)
@@ -166,9 +176,23 @@ def main():
         processed += 1
 
         fp_abs = os.path.abspath(fp)
-        current_files_abs.add(fp_abs)
+        key = _cache_key(fp_abs)
+        current_keys.add(key)
         st = _stat_tuple(fp)
-        cached = scache.get(fp_abs)
+
+        # Backward-compat: alte Caches hatten absolute Pfade als Keys.
+        cached = scache.get(key)
+        if cached is None:
+            old = scache.get(fp_abs)
+            if isinstance(old, dict):
+                cached = old
+                # migriere direkt auf das neue Key-Format
+                scache[key] = old
+                try:
+                    scache.pop(fp_abs, None)
+                except Exception:
+                    pass
+
         h = None
         if cached and st and (cached.get("size") == st[0]) and (int(cached.get("mtime", 0)) == st[1]):
             # Cache-Hit: Hash nicht erneut berechnen
@@ -177,7 +201,7 @@ def main():
             # Hash neu berechnen und Cache aktualisieren (falls erfolgreich)
             h = berechne_audio_hash(fp)
             if h and st:
-                scache[fp_abs] = {"hash": h, "size": st[0], "mtime": st[1]}
+                scache[key] = {"hash": h, "size": st[0], "mtime": st[1]}
 
         if not h:
             errs += 1
@@ -205,6 +229,8 @@ def main():
                 try:
                     os.remove(fp)
                     # keep source cache in sync (file no longer exists in source)
+                    scache.pop(key, None)
+                    # backward-compat cleanup (falls noch vorhanden)
                     scache.pop(fp_abs, None)
                 except Exception:
                     errs += 1
@@ -222,11 +248,12 @@ def main():
     save_index(idx_path, seen)
 
     # Cache-Bereinigung: Einträge entfernen, die es in der Quelle nicht mehr gibt
+    # (wir vergleichen jetzt relative Keys)
     try:
-        stale = [p for p in scache.keys() if p not in current_files_abs]
+        stale = [k for k in list(scache.keys()) if k not in current_keys]
         if stale:
-            for p in stale:
-                scache.pop(p, None)
+            for k in stale:
+                scache.pop(k, None)
         save_source_cache(scache_path, scache)
     except Exception:
         pass

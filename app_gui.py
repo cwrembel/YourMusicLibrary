@@ -354,7 +354,7 @@ class App(tk.Tk):
             try:
                 os.startfile(os.path.abspath(path))
             except Exception as e:
-                messagebox.showerror("Error", f"Could not open folder:\n\n[{path}\n\Fehler: {e}")
+                messagebox.showerror("Error", f"Could not open folder:\n\n{path}\n\nError: {e}")
             return
 
         # macOS Finder handling
