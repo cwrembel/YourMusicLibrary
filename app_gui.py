@@ -356,9 +356,14 @@ class App(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open folder:\n\n[{path}\n\Fehler: {e}")
             return
-    
+
         # macOS Finder handling
-        os.makedirs(path, exist_ok=True)
+        if not os.path.isdir(path):
+            messagebox.showerror(
+                "Folder not found",
+                f"The folder does not exist:\n\n{path}"
+            )
+            return
         try:
             p = os.path.abspath(path)
             p_slash = p if p.endswith('/') else p + '/'
@@ -387,20 +392,18 @@ class App(tk.Tk):
                     return
                 # if NO_ID -> fall through and open a fresh window
 
-            # Compute desired Finder window bounds: flush below the app
+            # Compute desired Finder window bounds: centered on screen
             try:
                 self.update_idletasks()
-                app_x = int(self.winfo_rootx())
-                app_y = int(self.winfo_rooty())
-                app_w = int(self.winfo_width())
-                app_h = int(self.winfo_height())
                 screen_w = int(self.winfo_screenwidth())
                 screen_h = int(self.winfo_screenheight())
-                margin = 8
-                x1 = max(0, min(app_x, screen_w - 100))
-                y1 = max(22, min(app_y + app_h + margin, screen_h - 100))  # keep below menu bar
-                win_w = max(400, min(app_w, screen_w - x1 - 20))
-                win_h = max(300, min(600, screen_h - y1 - 40))
+
+                # Size of the Finder window (reasonable defaults)
+                win_w = min(900, max(500, screen_w - 200))
+                win_h = min(650, max(400, screen_h - 200))
+
+                x1 = max(0, (screen_w - win_w) // 2)
+                y1 = max(22, (screen_h - win_h) // 2)  # keep below menu bar
                 x2 = x1 + win_w
                 y2 = y1 + win_h
             except Exception:
@@ -410,9 +413,11 @@ class App(tk.Tk):
             # Open a new Finder window for the folder and return its window id, positioned below the app
             script_open = (
                 'tell application "Finder"\n'
+                '    activate\n'
                 '    set targetFolder to POSIX file "{p}" as alias\n'
                 '    set newWin to (make new Finder window to targetFolder)\n'
                 '    set bounds of newWin to {{{x1}, {y1}, {x2}, {y2}}}\n'
+                '    set index of newWin to 1\n'
                 '    return (id of newWin) as string\n'
                 'end tell\n'
             ).format(p=p_esc, x1=x1, y1=y1, x2=x2, y2=y2)
@@ -422,8 +427,6 @@ class App(tk.Tk):
                 self._finder_win_id = int(win_id_txt)
             except Exception:
                 self._finder_win_id = None
-            # Ensure our app stays in front (Finder stays visible behind)
-            self.after(50, self._bring_app_front)
         except Exception as e:
             print("Could not toggle Finder window:", e)
 
