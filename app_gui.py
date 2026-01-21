@@ -348,10 +348,13 @@ class App(tk.Tk):
             return
         # --- Windows handling ---    
         if sys.platform.startswith("win"):
+            if not os.path.isdir(path):
+                messagebox.showwarning("Folder not found", f"The folder does not exist:\n{path}")   
+                return 
             try:
                 os.startfile(os.path.abspath(path))
             except Exception as e:
-                print("Could not open folder:", e)
+                messagebox.showerror("Error", f"Could not open folder:\n\n[{path}\n\Fehler: {e}")
             return
     
         # macOS Finder handling
