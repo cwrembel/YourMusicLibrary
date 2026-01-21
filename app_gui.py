@@ -1,6 +1,7 @@
 import os, sys, json, time, threading, subprocess
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from typing import Optional, Set
 
 # --- Watchdog & Library index imports ---
 from watchdog.observers import Observer
@@ -170,7 +171,7 @@ class App(tk.Tk):
         self.use_alt_var.set(False)
         self.cfg["use_alt"] = False  # ensure it saves back as default
         # Source variables with placeholder text
-        self.source_vars = [tk.StringVar(value=PLACEHOLDER_SRC) for _ in range(6)]        
+        self.source_vars = [tk.StringVar(value=PLACEHOLDER_SRC) for _ in range(6)]
         self.source_delete_vars = [tk.BooleanVar(value=False) for _ in range(6)]
 
         # ---------- Layout ----------
@@ -198,9 +199,9 @@ class App(tk.Tk):
         # Path combobox one row below the label, full width — with highlight wrapper
         self.library_wrap = tk.Frame(top_grid, bg="#DFF5D8")  # greenish highlight when active
         self.library_wrap.grid(row=2, column=0, columnspan=3, sticky="we")
-        self.library_combo = ttk.Combobox(self.library_wrap, width=90, textvariable=self.library_var,        
-                                          values=self.cfg.get("recent_targets", []))
-        self.library_combo.pack(fill="x", padx=6, pady=6)        
+        self.library_combo = ttk.Combobox(self.library_wrap, width=90, textvariable=self.library_var,
+                                        values=self.cfg.get("recent_targets", []))
+        self.library_combo.pack(fill="x", padx=6, pady=6)
         # open dialog when clicking on the text area, keep arrow to show recent list
         self._bind_combo_open_dialog(self.library_combo, lambda: self._browse_library())
 
@@ -226,7 +227,7 @@ class App(tk.Tk):
             # colored wrapper for the source combobox (lets us switch green/red)
             wrap = tk.Frame(cell, bg="#DFF5D8")  # default green on startup
             wrap.grid(row=1, column=0, columnspan=2, sticky="we")
-            combo = ttk.Combobox(wrap, width=40, textvariable=self.source_vars[i], values=[], state="readonly")                
+            combo = ttk.Combobox(wrap, width=40, textvariable=self.source_vars[i], values=[], state="readonly")
             combo.pack(fill="x", padx=6, pady=6)
             # refresh the dropdown just before it opens; handle selection from the list
             try:
@@ -239,7 +240,7 @@ class App(tk.Tk):
             self.source_wraps.append(wrap)
             self._bind_combo_open_dialog(combo, lambda idx=i: self._browse_source(idx))
             self.source_combos.append(combo)
-           
+
             # Delete-after checkbox
             ttk.Checkbutton(cell, text="Delete files from source after transfer",
                             variable=self.source_delete_vars[i],
@@ -265,7 +266,7 @@ class App(tk.Tk):
         self.alt_wrap = tk.Frame(alt, bg="#EEEEEE")
         self.alt_wrap.pack(side="left", fill="x", expand=True, padx=(8,8))
         self.alt_combo = ttk.Combobox(self.alt_wrap, width=60, textvariable=self.alt_library_var,       
-                                      values=self.cfg.get("recent_targets", []), state="disabled")
+                                    values=self.cfg.get("recent_targets", []), state="disabled")
         self.alt_combo.pack(fill="x", padx=6, pady=6)  
         # open dialog when clicking on the text area, keep arrow to show recent list
         self._bind_combo_open_dialog(self.alt_combo, lambda: self._browse_alt())
@@ -291,7 +292,7 @@ class App(tk.Tk):
         self.inline_frame = ttk.Frame(root, padding=(10,6,10,10))
         self.inline_frame.pack(fill="x")
         self.inline_bar = ttk.Progressbar(self.inline_frame, mode="indeterminate",
-                                          maximum=1, style=bar_style)
+                                        maximum=1, style=bar_style)
         self.inline_bar.pack(fill="x")
         # Row with percentage (left) and ETA (right)
         info_row = ttk.Frame(self.inline_frame)
@@ -346,11 +347,11 @@ class App(tk.Tk):
         path = self.library_combo.get().strip()
         if not path:
             return
-        # --- Windows handling ---    
+        # --- Windows handling ---
         if sys.platform.startswith("win"):
             if not os.path.isdir(path):
-                messagebox.showwarning("Folder not found", f"The folder does not exist:\n{path}")   
-                return 
+                messagebox.showwarning("Folder not found", f"The folder does not exist:\n{path}")
+                return
             try:
                 os.startfile(os.path.abspath(path))
             except Exception as e:
@@ -492,10 +493,10 @@ class App(tk.Tk):
         return "break"
 
     def _browse_source(self, idx, event=None):
-        d = filedialog.askdirectory(initialdir=self._normalized_src(self.source_vars[idx].get()) or "/", title=f"Select Source {idx+1}")       
+        d = filedialog.askdirectory(initialdir=self._normalized_src(self.source_vars[idx].get()) or "/", title=f"Select Source {idx+1}")
         if d:
             self._set_source_path(idx, d)
-        return "break"            
+        return "break"
 
     def _bind_combo_open_dialog(self, combo, handler):
         """
@@ -528,7 +529,7 @@ class App(tk.Tk):
         val = (val or "").strip()
         return "" if (not val or val == PLACEHOLDER_SRC or val == CLEAR_LABEL) else val
 
-    def _current_sources(self, exclude_idx: int | None = None) -> set[str]:
+    def _current_sources(self, exclude_idx: Optional[int] = None) -> Set[str]:
         used = set()
         for i, v in enumerate(self.source_vars):
             if exclude_idx is not None and i == exclude_idx:
@@ -589,11 +590,11 @@ class App(tk.Tk):
 
         alt_active = bool(self.use_alt_var.get() and self.alt_library_var.get().strip())
 
-        # Main library: green when alt is NOT active, otherwise neutral gray   
+        # Main library: green when alt is NOT active, otherwise neutral gray
         if hasattr(self, "library_wrap"):
             self.library_wrap.configure(bg=GRAY if alt_active else GREEN)
 
-        # Alternative target: red when active, otherwise neutral gray        
+        # Alternative target: red when active, otherwise neutral gray
         if hasattr(self, "alt_wrap"):
             self.alt_wrap.configure(bg=RED if alt_active else GRAY)
 
@@ -607,13 +608,13 @@ class App(tk.Tk):
     def update_alt_controls(self):
         state = "normal" if self.use_alt_var.get() else "disabled"
         self.alt_combo.configure(state=state)
-        for _ in self.children.values():    
+        for _ in self.children.values():
             pass
-      
+
     def update_arrows(self):
         # Now only updates controls + visual highlight (no arrow canvas)
         self.update_alt_controls()
-        self.update_target_highlight()            
+        self.update_target_highlight()
         
     def on_delete_toggle(self, idx: int):
         """Called when the delete-after checkbox is toggled for a source slot."""
@@ -633,7 +634,7 @@ class App(tk.Tk):
             return
         if dont_again:
             self.cfg["delete_warn_suppressed_global"] = True
-            save_cfg(self.cfg)      
+            save_cfg(self.cfg)
     def inline_begin(self):
         """Start the inline progress bar immediately in pulsing mode."""
         try:
@@ -657,23 +658,23 @@ class App(tk.Tk):
             self._inline_pulsing = False
             self.inline_eta.configure(text="ETA: —")
             try:
-                self.inline_pct.configure(text="0%")  
+                self.inline_pct.configure(text="0%")
             except Exception:
                 pass
             self.update_idletasks()
         except Exception:
             pass
 
-    def inline_update_progress(self, current:int, start_t:float, total: int|None):
+    def inline_update_progress(self, current: int, start_t: float, total: Optional[int]):
         try:
             # Force determinate mode on every tick so the bar fills left->right
             self.inline_bar.stop()
-            self.inline_bar.configure(mode="determinate")            
+            self.inline_bar.configure(mode="determinate")
             # On first real tick, switch from pulsing to determinate
             if self._inline_pulsing:
                 self.inline_bar.stop()
                 self.inline_bar.configure(mode="determinate")
-                self._inline_pulsing = False            
+                self._inline_pulsing = False
             if total:
                 self.inline_bar.configure(maximum=max(1, int(total)))
             maxv = int(self.inline_bar["maximum"]) or 1
@@ -696,7 +697,7 @@ class App(tk.Tk):
     def inline_done(self):
         try:
             self.inline_bar.stop()
-            self.inline_bar.configure(mode="determinate")            
+            self.inline_bar.configure(mode="determinate")
             maxv = int(self.inline_bar["maximum"]) or 1
             self.inline_bar["value"] = maxv
             self.inline_eta.configure(text="ETA: 0s")
@@ -704,7 +705,7 @@ class App(tk.Tk):
                 self.inline_pct.configure(text="100%")
             except Exception:
                 pass
-            self.inline_bar.configure(mode="determinate")            
+            self.inline_bar.configure(mode="determinate")
         except Exception:
             pass
 
@@ -867,14 +868,14 @@ class App(tk.Tk):
 
             # Abschluss-Summary: write into Control window instead of popup
             summary = (f"Copied: {overall['copied']}\n"
-                       f"Duplicates (content): {overall['dups']}\n"
-                       f"Errors: {overall['errors']}\n"
-                       f"Total processed: {overall['processed']}\n\n"
-                       "Remaining files per source (music files only):\n" +
-                       "\n".join(
-                           f"• Source {i}: {os.path.basename(p) or p} — {leftovers.get(p, 0)}"
-                           for (i, p) in selected
-                       ))
+                    f"Duplicates (content): {overall['dups']}\n"
+                    f"Errors: {overall['errors']}\n"
+                    f"Total processed: {overall['processed']}\n\n"
+                    "Remaining files per source (music files only):\n" +
+                    "\n".join(
+                        f"• Source {i}: {os.path.basename(p) or p} — {leftovers.get(p, 0)}"
+                        for (i, p) in selected
+                    ))
             # Show popup only if not stopped
             if not self.stop_requested:
                 self.after(0, lambda: messagebox.showinfo("Finished", summary))
@@ -892,16 +893,22 @@ class App(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _count_audio_files(self, folder):
-        exts = {".mp3",".flac",".alac",".m4a",".aac",".ogg",".opus",".wav",".aif",".aiff",".wma"}
+    def _count_audio_files(self, folder: str) -> int:
+        """Count audio files in a folder (recursive).
+
+        Uses `AUDIO_EXTS` from `kopiere_einzigartige.py` so the GUI and copier agree
+        on what counts as an audio file.
+        """
+        n = 0
         skip_dirs = {".Spotlight-V100", ".Trashes", ".fseventsd"}
-        n=0
-        for r, _, files in os.walk(folder):
+        for root, dirs, files in os.walk(folder):
+            # Prevent walking into unwanted/system folders
+            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith('.')]
             for f in files:
                 if f.startswith('.'):  # skip hidden files like .DS_Store
                     continue
                 ext = os.path.splitext(f)[1].lower()
-                if ext in exts:
+                if ext in AUDIO_EXTS:
                     n += 1
         return n
 
@@ -930,14 +937,14 @@ class App(tk.Tk):
             pass
 
     def save_now(self):
-        # Persist main settings, but do NOT persist sources or their recent list        
+        # Persist main settings, but do NOT persist sources or their recent list
         self.cfg["library"] = self.library_var.get().strip()
         self.cfg["use_alt"] = bool(self.use_alt_var.get())
         self.cfg["alt_library"] = self.alt_library_var.get().strip()
         # Do not persist sources / recent_sources so the app starts clean
         self.cfg["sources"] = ["" for _ in range(6)]
         self.cfg["recent_sources"] = []
-        # Keep recent_targets for convenience       
+        # Keep recent_targets for convenience
         self.cfg["recent_targets"] = add_recent(self.cfg.get("recent_targets", []), self.library_var.get().strip())
         save_cfg(self.cfg)
 
@@ -1081,7 +1088,7 @@ class StatusWindow:
         except Exception:
             pass
 
-    def update_progress(self, current:int, start_t:float, total: int|None):
+    def update_progress(self, current: int, start_t: float, total: Optional[int]):
         """Update the progress bar and ETA.
         Ensures the bar is in determinate mode on every tick
         so it fills left→right immediately when totals arrive.
@@ -1112,7 +1119,7 @@ class StatusWindow:
         except Exception:
             pass
 
-    def get_tail(self, n_lines:int) -> str:
+    def get_tail(self, n_lines: int) -> str:
         return self.text.get("end-{}l linestart".format(n_lines), "end")
 
     def done(self):
@@ -1123,9 +1130,9 @@ class DeleteConfirmDialog(tk.Toplevel):
     """
     Modal confirmation dialog used before deleting source files.
     Shows:
-      - question text ("Are you sure ...?")
-      - a 'Don't show again' checkbox
-      - OK / Cancel buttons
+    - question text ("Are you sure ...?")
+    - a 'Don't show again' checkbox
+    - OK / Cancel buttons
     Usage:
         ok, dont_show_again = DeleteConfirmDialog.ask(parent, source_label_text)
     """

@@ -13,10 +13,50 @@ INDEX_NAME = ".musik_index.db"  # einfache JSON-Datei mit Hashes (Set)
 MAP_NAME = ".hash_map.json"  # Pfad->Hash Zuordnung für Watchdog
 CACHE_NAME = ".hash_cache.json"  # pro-Source Cache (RELATIVER Pfad -> {hash,size,mtime})
 
+
 AUDIO_EXTS = {
-    ".mp3",".flac",".alac",".m4a",".aac",".ogg",".opus",
-    ".wav",".aif",".aiff",".wma",".ape",".wv",".mka",".dsd",".mid",".midi",".ra",".rm",".pcm"
+    ".mp3", ".flac", ".alac", ".m4a", ".m4b", ".aac", ".m4p",
+    ".ogg", ".oga", ".opus", ".spx",
+    ".wav", ".aif", ".aiff", ".aifc", ".caf",
+    ".wma", ".ape", ".wv", ".mka", ".mkv", ".mp4", ".weba",
+    ".dsd", ".dff", ".dsf",
+    ".mid", ".midi",
+    ".amr", ".3gp", ".3g2",
+    ".ac3", ".dts",
+    ".au", ".snd", ".pcm",
+    ".mpc", ".tta", ".tak"
 }
+
+# --- Windows helper: hide cache file in Explorer ---
+
+def _hide_file_windows(path: str) -> None:
+    """Hide a file in Windows Explorer (no-op on other OS)."""
+    try:
+        if not sys.platform.startswith("win"):
+            return
+        import ctypes
+        from ctypes import wintypes
+
+        FILE_ATTRIBUTE_HIDDEN = 0x02
+
+        GetFileAttributesW = ctypes.windll.kernel32.GetFileAttributesW
+        GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
+        GetFileAttributesW.restype = wintypes.DWORD
+
+        SetFileAttributesW = ctypes.windll.kernel32.SetFileAttributesW
+        SetFileAttributesW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD]
+        SetFileAttributesW.restype = wintypes.BOOL
+
+        attrs = GetFileAttributesW(path)
+        # INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
+        if attrs == 0xFFFFFFFF:
+            return
+
+        # Preserve existing attributes, just add HIDDEN
+        new_attrs = attrs | FILE_ATTRIBUTE_HIDDEN
+        SetFileAttributesW(path, new_attrs)
+    except Exception:
+        pass
 
 def index_path(target: str) -> str:
     return os.path.join(target, INDEX_NAME)
@@ -255,6 +295,7 @@ def main():
             for k in stale:
                 scache.pop(k, None)
         save_source_cache(scache_path, scache)
+        _hide_file_windows(scache_path)
     except Exception:
         pass
 
